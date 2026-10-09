@@ -38,6 +38,20 @@ $ cmake --build build --config Release
 ```
 The resulting builds can be found in `build/ChowKick_artefacts`.
 
+### Android
+
+The standalone app can be built as an Android APK with the Gradle project in `android/`.
+You'll need JDK 17+, the Android SDK (with `ANDROID_HOME` set), NDK `25.2.9519653`, and the
+SDK's CMake `3.22.1`, plus the usual JUCE Linux development packages (used to build JUCE's
+host-side helper tool).
+
+```bash
+# applies Android compatibility patches to the submodules, then runs Gradle
+$ bash scripts/android_build.sh assembleRelease
+```
+The APK can be found in `android/app/build/outputs/apk/release`. The `CI-Android` GitHub
+workflow builds the same APK and uploads it as a build artifact.
+
 ## Credits
 
 - GUI Framework - [Plugin GUI Magic](https://github.com/ffAudio/PluginGUIMagic)

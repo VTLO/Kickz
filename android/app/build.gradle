@@ -1,0 +1,100 @@
+plugins {
+    id 'com.android.application'
+}
+
+def repoRoot = file('../..')
+def juceModules = new File(repoRoot, 'modules/JUCE/modules')
+
+// Keep the app version in sync with the CMake project version
+def projectVersion = (new File(repoRoot, 'CMakeLists.txt').text =~ /project\s*\(\s*ChowKick\s+VERSION\s+([0-9.]+)/)[0][1]
+def versionParts = projectVersion.tokenize('.').collect { it.toInteger() } + [0, 0, 0]
+
+android {
+    namespace 'com.chowdsp.chowkick'
+    compileSdk 34
+    ndkVersion '25.2.9519653'
+
+    defaultConfig {
+        applicationId 'com.chowdsp.chowkick'
+        minSdk 24
+        targetSdk 34
+        versionCode versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]
+        versionName projectVersion
+
+        ndk {
+            abiFilters(*project.property('chowkickAbis').tokenize(','))
+        }
+
+        externalNativeBuild {
+            cmake {
+                targets 'ChowKick_Standalone'
+                arguments '-DANDROID_STL=c++_shared',
+                          '-DANDROID_ARM_NEON=TRUE',
+                          '-DANDROID_CPP_FEATURES=exceptions rtti'
+            }
+        }
+    }
+
+    // Use a real keystore when one is provided (e.g. from CI secrets),
+    // otherwise release builds are signed with the debug key so the APK is still installable.
+    def keystorePath = System.getenv('CHOWKICK_KEYSTORE_PATH')
+
+    signingConfigs {
+        if (keystorePath) {
+            release {
+                storeFile file(keystorePath)
+                storePassword System.getenv('CHOWKICK_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('CHOWKICK_KEY_ALIAS')
+                keyPassword System.getenv('CHOWKICK_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DCMAKE_BUILD_TYPE=Debug'
+                }
+            }
+        }
+        release {
+            minifyEnabled false // JUCE accesses its Java classes through JNI
+            signingConfig keystorePath ? signingConfigs.release : signingConfigs.debug
+            externalNativeBuild {
+                cmake {
+                    arguments '-DCMAKE_BUILD_TYPE=Release'
+                }
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path new File(repoRoot, 'CMakeLists.txt')
+            version '3.22.1'
+            buildStagingDirectory file('.cxx')
+        }
+    }
+
+    sourceSets {
+        main {
+            // JUCE's Java glue: loads libjuce_jni.so and boots JUCE from the Application object
+            java.srcDirs += [
+                new File(juceModules, 'juce_core/native/javacore/init'),
+                new File(juceModules, 'juce_core/native/javacore/app'),
+            ]
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+}

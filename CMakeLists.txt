@@ -9,6 +9,10 @@ if(IOS)
     set(JUCE_FORMATS Standalone AUv3)
     option(CHOWKICK_BUILD_CLAP "Create a CLAP target for ChowKick" OFF)
     option(CHOWKICK_BUILD_WITH_MTS "Link ChowKick with MTS" OFF)
+elseif(ANDROID)
+    set(JUCE_FORMATS Standalone)
+    option(CHOWKICK_BUILD_CLAP "Create a CLAP target for ChowKick" OFF)
+    option(CHOWKICK_BUILD_WITH_MTS "Link ChowKick with MTS" OFF)
 else()
     set(JUCE_FORMATS AU VST3 Standalone)
     option(CHOWKICK_BUILD_CLAP "Create a CLAP target for ChowKick" ON)
@@ -20,7 +24,7 @@ if (CHOWKICK_BUILD_CLAP AND (CMAKE_VERSION VERSION_LESS 3.21.0))
 endif()
 
 # Build LV2 only on Linux
-if(UNIX AND NOT APPLE)
+if(UNIX AND NOT APPLE AND NOT ANDROID)
     message(STATUS "Building LV2 plugin format")
     list(APPEND JUCE_FORMATS LV2)
 endif()
@@ -100,4 +104,16 @@ if(IOS)
             XCODE_ATTRIBUTE_INSTALL_PATH "$(LOCAL_APPS_DIR)/ChowKick.app/PlugIns"
             XCODE_ATTRIBUTE_SKIP_INSTALL "NO"
             XCODE_ATTRIBUTE_ENABLE_IN_APP_PURCHASE "YES")
+endif()
+
+if(ANDROID)
+    # The JUCE Java glue (com.rmsl.juce.Java) loads the native code from libjuce_jni.so
+    message(STATUS "Setting Android-specific properties...")
+    set_target_properties(ChowKick_Standalone PROPERTIES OUTPUT_NAME juce_jni)
+
+    # JUCE looks up the app entry point (juce_CreateApplication) at runtime with dlsym(),
+    # so the Standalone wrapper must not be built with hidden symbol visibility
+    set_target_properties(ChowKick_Standalone PROPERTIES
+        C_VISIBILITY_PRESET default
+        CXX_VISIBILITY_PRESET default)
 endif()
