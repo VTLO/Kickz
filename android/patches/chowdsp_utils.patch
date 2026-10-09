@@ -1,0 +1,49 @@
+diff --git a/modules/gui/chowdsp_gui/InfoUtils/chowdsp_SystemInfo.h b/modules/gui/chowdsp_gui/InfoUtils/chowdsp_SystemInfo.h
+index 106c005..edf6433 100644
+--- a/modules/gui/chowdsp_gui/InfoUtils/chowdsp_SystemInfo.h
++++ b/modules/gui/chowdsp_gui/InfoUtils/chowdsp_SystemInfo.h
+@@ -18,6 +18,8 @@ namespace SystemInfo
+         return "Mac";
+ #elif JUCE_IOS
+         return "IOS";
++#elif JUCE_ANDROID
++        return "Android";
+ #elif JUCE_LINUX
+ #if JUCE_64BIT
+         return "Linux64";
+diff --git a/modules/gui/chowdsp_gui/Presets/chowdsp_PresetsComp.cpp b/modules/gui/chowdsp_gui/Presets/chowdsp_PresetsComp.cpp
+index 3b195bf..8045532 100644
+--- a/modules/gui/chowdsp_gui/Presets/chowdsp_PresetsComp.cpp
++++ b/modules/gui/chowdsp_gui/Presets/chowdsp_PresetsComp.cpp
+@@ -254,16 +254,24 @@ int PresetsComp::addSavePresetOptions (int optionID)
+                                                   auto presetFile = curPreset->getPresetFile();
+                                                   if (! (presetFile.existsAsFile() && presetFile.hasFileExtension (presetExt)))
+                                                   {
+-                                                      juce::NativeMessageBox::showMessageBox (juce::MessageBoxIconType::WarningIcon, "Preset Deletion", "Unable to find preset file!");
++                                                      juce::NativeMessageBox::showMessageBoxAsync (juce::MessageBoxIconType::WarningIcon, "Preset Deletion", "Unable to find preset file!");
+                                                       return;
+                                                   }
+ 
+-                                                  if (juce::NativeMessageBox::showOkCancelBox (juce::MessageBoxIconType::QuestionIcon, "Preset Deletion", "Are you sure you want to delete this preset? This operation cannot be undone."))
+-                                                  {
+-                                                      presetFile.deleteFile();
+-                                                      manager.loadDefaultPreset();
+-                                                      manager.loadUserPresetsFromFolder (manager.getUserPresetPath());
+-                                                  }
++                                                  juce::NativeMessageBox::showOkCancelBox (juce::MessageBoxIconType::QuestionIcon,
++                                                                                           "Preset Deletion",
++                                                                                           "Are you sure you want to delete this preset? This operation cannot be undone.",
++                                                                                           nullptr,
++                                                                                           juce::ModalCallbackFunction::create (
++                                                                                               [this, presetFile] (int result)
++                                                                                               {
++                                                                                                   if (result == 0)
++                                                                                                       return;
++
++                                                                                                   presetFile.deleteFile();
++                                                                                                   manager.loadDefaultPreset();
++                                                                                                   manager.loadUserPresetsFromFolder (manager.getUserPresetPath());
++                                                                                               }));
+                                               }
+                                           });
+         }
